@@ -130,6 +130,27 @@
       <div class="field" id="w_reserva"><label>Você já tem reserva de emergência? De quanto</label><input type="text" id="f_reserva" inputmode="numeric" placeholder="R$ 0,00 se não tiver"><span class="field-error">Campo obrigatório.</span></div>
       <div class="field" id="w_dividas"><label>Tem dívidas hoje? Quais e valor aproximado</label><textarea id="f_dividas" rows="2" placeholder="Ex: cartão de crédito, R$ 1.200. Se não tiver, escreva 'não tenho'"></textarea><span class="field-error">Campo obrigatório.</span></div>
       <div class="field" id="w_investido"><label>Quanto tem investido hoje (valor total aproximado)</label><input type="text" id="f_investido" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+
+      <h2 class="page-title" style="margin-top:26px;">Seus gastos por categoria (mensal)</h2>
+      <p class="intro-text" style="margin-top:-14px;">Não precisa ser exato, uma estimativa já ajuda bastante.</p>
+      <div class="field" id="w_gastoMoradia"><label>Moradia (aluguel, financiamento, condomínio, contas de casa)</label><input type="text" id="f_gastoMoradia" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+      <div class="field" id="w_gastoAlimentacao"><label>Alimentação (mercado, delivery, restaurante)</label><input type="text" id="f_gastoAlimentacao" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+      <div class="field" id="w_gastoTransporte"><label>Transporte (combustível, transporte público, apps)</label><input type="text" id="f_gastoTransporte" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+      <div class="field" id="w_gastoLazer"><label>Lazer e assinaturas (streaming, saídas, hobbies)</label><input type="text" id="f_gastoLazer" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+      <div class="field" id="w_gastoOutros"><label>Outros gastos não listados acima</label><input type="text" id="f_gastoOutros" inputmode="numeric" placeholder="R$ 0,00"><span class="field-error">Campo obrigatório.</span></div>
+
+      <div class="choice-group" id="w_gastoFogeControle">
+        <span class="choice-label">Qual desses gastos você sente que mais foge do seu controle?</span>
+        <div class="choice-options" data-field="gastoFogeControle">
+          <button class="choice-btn" data-value="Moradia">Moradia</button>
+          <button class="choice-btn" data-value="Alimentação">Alimentação</button>
+          <button class="choice-btn" data-value="Transporte">Transporte</button>
+          <button class="choice-btn" data-value="Lazer e assinaturas">Lazer e assinaturas</button>
+          <button class="choice-btn" data-value="Nenhum, sinto que controlo bem">Nenhum, controlo bem</button>
+        </div>
+        <span class="choice-error">Escolhe uma opção.</span>
+      </div>
+
       <div class="nav-row"><button class="btn ghost" onclick="goTo(1)">Voltar</button><button class="btn" onclick="tryGo(2,3,validatePage2)">Continuar</button></div>
     </div>
 
@@ -217,7 +238,7 @@
     });
   }
 
-  ['f_valor_objetivo','f_renda','f_guarda_mes','f_reserva','f_investido'].forEach(attachCurrencyMask);
+  ['f_valor_objetivo','f_renda','f_guarda_mes','f_reserva','f_investido','f_gastoMoradia','f_gastoAlimentacao','f_gastoTransporte','f_gastoLazer','f_gastoOutros'].forEach(attachCurrencyMask);
   attachPhoneMask('f_whats');
 
   document.querySelectorAll('.choice-options').forEach(group => {
@@ -291,11 +312,12 @@
 
   function validatePage2() {
     let ok = true;
-    ['w_renda','w_guarda_mes','w_reserva','w_dividas','w_investido'].forEach(w => {
+    ['w_renda','w_guarda_mes','w_reserva','w_dividas','w_investido','w_gastoMoradia','w_gastoAlimentacao','w_gastoTransporte','w_gastoLazer','w_gastoOutros'].forEach(w => {
       const fieldId = 'f_' + w.slice(2);
       if (!requireField(w, fieldId)) ok = false;
     });
-    if (!ok) document.querySelector('.field.invalid')?.scrollIntoView({behavior:'smooth', block:'center'});
+    if (!requireChoice('w_gastoFogeControle', 'gastoFogeControle')) ok = false;
+    if (!ok) document.querySelector('.field.invalid, .choice-group.invalid')?.scrollIntoView({behavior:'smooth', block:'center'});
     return ok;
   }
 
@@ -312,6 +334,18 @@
   function val(id) { return document.getElementById(id).value.trim(); }
   function normalizePhone(raw) { return raw.replace(/\D/g, ''); }
 
+  function parseCurrencyValue(str) {
+    if (!str) return 0;
+    const digits = String(str).replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) / 100 : 0;
+  }
+
+  function formatCurrencyFromNumber(num) {
+    const parts = num.toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return 'R$ ' + parts.join(',');
+  }
+
   function buildAnswerSet() {
     const objetivo = answers.objetivo === 'Outro' ? (val('f_objetivo_outro') || 'Outro') : (answers.objetivo || '—');
     return [
@@ -326,6 +360,16 @@
       ["Reserva de emergência", val('f_reserva') || '—'],
       ["Dívidas", val('f_dividas') || '—'],
       ["Total investido hoje", val('f_investido') || '—'],
+      ["Gasto com moradia", val('f_gastoMoradia') || '—'],
+      ["Gasto com alimentação", val('f_gastoAlimentacao') || '—'],
+      ["Gasto com transporte", val('f_gastoTransporte') || '—'],
+      ["Gasto com lazer e assinaturas", val('f_gastoLazer') || '—'],
+      ["Outros gastos", val('f_gastoOutros') || '—'],
+      ["Total de despesas", formatCurrencyFromNumber(
+        ['f_gastoMoradia','f_gastoAlimentacao','f_gastoTransporte','f_gastoLazer','f_gastoOutros']
+          .reduce((soma, id) => soma + parseCurrencyValue(val(id)), 0)
+      )],
+      ["Gasto que mais foge do controle", answers.gastoFogeControle || '—'],
       ["Reação a perda de investimento", answers.reacao_perda || '—'],
       ["Já investiu antes / em quê", val('f_ja_investiu') || '—'],
       ["Entende termos técnicos (CDB, IPCA, DY)", answers.conhecimento_tecnico || '—'],
@@ -360,8 +404,7 @@
     pares.forEach(([label, value]) => { payload[label] = value; });
     saveToSheets(payload);
 
-    let msg = `Oi! Terminei meu diagnóstico individual.\n\n`;
-    pares.forEach(([label, value]) => { msg += `*${label}:* ${value}\n`; });
+    const msg = 'Olá, preenchi meu formulário para análise.';
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 </script>
